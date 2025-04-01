@@ -1,0 +1,6 @@
+(test
+ (name test_ocaml_parser)
+ (libraries ocaml_parser alcotest))
+
+(cram
+ (deps ../bin/main.exe))
