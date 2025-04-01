@@ -1,56 +1,55 @@
-name: OCaml CI Pipeline
+name: Ocaml-CI
 
 on:
   push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+    branches:
+      - main
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-22.04
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup OCaml
-        uses: ocaml/setup-ocaml@v2
-        with:
-          ocaml-compiler: "4.14.1"
-
-      - name: Install basic build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            pkg-config
-
-      - name: Cache dependencies
+    
+      - name: Cache OCaml Environment
+        id: cache-ocaml
         uses: actions/cache@v3
         with:
-          path: |
-            ~/.opam
-            _build
-          key: ${{ runner.os }}-ocaml-${{ hashFiles('dune-project', '*.opam') }}
-          restore-keys: |
-            ${{ runner.os }}-ocaml-
-
-      - name: Install project dependencies
+          path: ~/.opam
+          key: ${{ runner.os }}-ocaml-static-4.14
+    
+      - name: Ensure OPAM is available and install apt dependencies 
+        if: steps.cache-ocaml.outputs.cache-hit == 'true'
         run: |
-          opam update
-          opam install -y dune alcotest angstrom ppx_expect
-          opam install --deps-only -y .
+          sudo apt-get update
 
-      - name: Build project
-        run: dune build
+      - name: Install apt dependencies
+        if: steps.cache-ocaml.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          opam init --disable-sandboxing --yes
+          opam switch create 4.14.1
+          eval $(opam env)
+
+      - name: Dependencies
+        if: steps.cache-ocaml.outputs.cache-hit != 'true'
+        run: |
+          opam install dune alcotest zanuda --yes
+
+      - name: Build
+        run: |
+          eval $(opam env)
+          dune build @check
 
       - name: Run tests
-        run: dune runtest
-
-      - name: Verify ASM generation
         run: |
-          echo "let f x y = x + y\nlet main = print_int (f 2 3)" > test.ml
-          EXECUTABLE=$(find _build/default -maxdepth 1 -executable -type f | head -n 1)
-          $EXECUTABLE test.ml
-          test -f output.s
-         
+          eval $(opam env)
+          dune runtest
+
+      - name: Run linter
+        run: |
+          eval $(opam env)
+          zanuda -dir .    
