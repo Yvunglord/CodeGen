@@ -20,6 +20,6 @@ COPY . .
 
 RUN eval $(opam env) && \
     dune build && \
-    chmod +x ./main.byte
+    chmod +x ./main.exe
 
 CMD ["dune", "runtest"]
