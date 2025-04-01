@@ -31,9 +31,6 @@ jobs:
       - name: Build Docker image
         run: docker build -t ocaml-parser-image .
 
-      - name: Run Docker container and build project
-        run: docker run --rm ocaml-parser-image
-
       - name: Run tests
         run: docker run --rm ocaml-parser-image dune runtest
 

@@ -4,7 +4,6 @@
 *.cmi
 *.a
 *.o
-*.s
 *.cmx
 *.cmxs
 *.cmxa
@@ -28,3 +27,5 @@ setup.log
 
 # Local OPAM switch
 _opam/
+
+output.s
