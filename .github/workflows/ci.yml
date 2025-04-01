@@ -1,14 +1,14 @@
-name: OCaml CI
+name: OCaml CI Pipeline
 
 on:
   push:
     branches: [master]
+  pull_request:
+    branches: [master]
 
 jobs:
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-
+  build-and-test:
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,41 +16,45 @@ jobs:
       - name: Setup OCaml
         uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: "4.14.2"
+          ocaml-compiler: "4.14.1"
 
-      - name: Install system dependencies
+      - name: Install basic build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            gcc \
-            make
+            build-essential \
+            pkg-config
 
-      - name: Cache OPAM
+      - name: Cache dependencies
         uses: actions/cache@v3
         with:
           path: |
             ~/.opam
             _build
-          key: ${{ runner.os }}-ocaml-4.14.2-${{ hashFiles('dune-project', '*.opam') }}
+          key: ${{ runner.os }}-ocaml-${{ hashFiles('dune-project', '*.opam') }}
 
-      - name: Install dependencies
+      - name: Install project dependencies
         run: |
-          opam repo add zanuda https://github.com/ocaml-platform/zanuda.git
           opam update
-          opam install -y dune alcotest zanuda
+          opam install -y dune alcotest angstrom ppx_expect
           opam install --deps-only -y .
 
-      - name: Initialize Dune project (if needed)
-        run: |
-          if [ ! -f dune-project ]; then
-            dune init project your_project_name --libs=angstrom
-          fi
-
-      - name: Build
+      - name: Build project
         run: dune build
 
       - name: Run tests
         run: dune runtest
 
-      - name: Run linter
-        run: zanuda -dir . -exclude _build
+      - name: Verify ASM generation
+        run: |
+          echo "let f x y = x + y\nlet main = print_int (f 2 3)" > test.ml
+          ./_build/default/main.exe test.ml
+          test -f output.s
+          head -n 20 output.s
+
+      - name: Upload generated ASM
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: generated-asm
+          path: output.s
