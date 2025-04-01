@@ -32,6 +32,8 @@ jobs:
             ~/.opam
             _build
           key: ${{ runner.os }}-ocaml-${{ hashFiles('dune-project', '*.opam') }}
+          restore-keys: |
+            ${{ runner.os }}-ocaml-
 
       - name: Install project dependencies
         run: |
@@ -48,13 +50,7 @@ jobs:
       - name: Verify ASM generation
         run: |
           echo "let f x y = x + y\nlet main = print_int (f 2 3)" > test.ml
-          ./_build/default/main.exe test.ml
+          EXECUTABLE=$(find _build/default -maxdepth 1 -executable -type f | head -n 1)
+          $EXECUTABLE test.ml
           test -f output.s
-          head -n 20 output.s
-
-      - name: Upload generated ASM
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: generated-asm
-          path: output.s
+         
