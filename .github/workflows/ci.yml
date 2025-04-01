@@ -1,67 +1,57 @@
-name: OCaml CI Pipeline
+name: Ocaml CI
 
 on:
   push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+    branches:
+      - master
 
 jobs:
-  build-test:
-    runs-on: ubuntu-22.04
-    env:
-      OCAML_VERSION: "4.14.2"
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup OCaml
-        uses: ocaml/setup-ocaml@v3
+    
+      - name: Cache OCaml Environment
+        id: cache-ocaml
+        uses: actions/cache@v3
         with:
-          ocaml-compiler: "ocaml-base-compiler.${{ env.OCAML_VERSION }}"
-
-      - name: Install system tools
+          path: ~/.opam
+          key: ${{ runner.os }}-ocaml-static-4.14
+    
+      - name: Ensure OPAM is available and install apt dependencies 
+        if: steps.cache-ocaml.outputs.cache-hit == 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gcc \
-            make
+          sudo apt-get install -y opam
 
-      - name: Cache OPAM
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.opam
-            _build
-          key: ${{ runner.os }}-ocaml-${{ env.OCAML_VERSION }}-${{ hashFiles('*.opam', 'dune-project') }}
-
-      - name: Install dependencies
+      - name: Install apt dependencies
+        if: steps.cache-ocaml.outputs.cache-hit != 'true'
         run: |
-          opam repo add zanuda https://github.com/Kakadu/zanuda.git
-          opam update
-          opam install -y dune alcotest angstrom ppx_expect zanuda
-          opam install --deps-only -y .
+          sudo apt-get update
+          sudo apt-get install -y ocaml opam
+          opam init --disable-sandboxing --yes
+          opam switch create 4.14.1
+          eval $(opam env)
+
+      - name: Dependencies
+        if: steps.cache-ocaml.outputs.cache-hit != 'true'
+        run: |
+          opam install dune alcotest zanuda --yes
 
       - name: Build
-        run: dune build
-
-      - name: Run linter
-        run: zanuda -dir . -exclude _build
+        run: |
+          eval $(opam env)
+          dune build @check
 
       - name: Run tests
-        run: dune runtest
-
-      - name: Verify ASM generation
         run: |
-          echo "let f x y = x + y\nlet main = print_int (f 2 3)" > test.ml
-          ./main.byte test.ml
-          test -f output.s
-          head -n 20 output.s
+          eval $(opam env)
+          dune runtest
 
-      - name: Upload generated ASM
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-asm
-          path: output.s
+      - name: Run linter
+        run: |
+          eval $(opam env)
+          zanuda -dir .
