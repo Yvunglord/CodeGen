@@ -31,7 +31,7 @@ jobs:
           path: |
             ~/.opam
             _build
-          key: ${{ runner.os }}-ocaml-4.14.1-${{ hashFiles('dune-project', '*.opam') }}
+          key: ${{ runner.os }}-ocaml-4.14.2-${{ hashFiles('dune-project', '*.opam') }}
 
       - name: Install dependencies
         run: |
