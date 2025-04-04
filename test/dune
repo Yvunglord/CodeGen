@@ -1,6 +1,6 @@
 (test
  (name test_ocaml_parser)
- (libraries ocaml_parser alcotest core_bench))
+ (libraries ocaml_parser alcotest))
 
 (cram
  (deps ../bin/main.exe rv64_runtime.s))
