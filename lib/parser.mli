@@ -16,3 +16,4 @@ type program_data = {
 type 'a parser_result = Failed | Parsed of 'a * char list
 
 val parse : char list -> program_data parser_result
+val fold_constants : expr -> expr

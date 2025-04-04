@@ -103,6 +103,35 @@ and factor input =
        Let (var, e1, e2)))
     input
 
+  let rec fold_constants = function
+  | Add (e1, e2) -> 
+      let e1' = fold_constants e1 in
+      let e2' = fold_constants e2 in
+      (match (e1', e2') with
+      | Int a, Int b -> Int (a + b)
+      | _ -> Add (e1', e2'))
+  | Sub (e1, e2) -> 
+      let e1' = fold_constants e1 in
+      let e2' = fold_constants e2 in
+      (match (e1', e2') with
+      | Int a, Int b -> Int (a - b)
+      | _ -> Sub (e1', e2'))
+  | Mul (e1, e2) -> 
+      let e1' = fold_constants e1 in
+      let e2' = fold_constants e2 in
+      (match (e1', e2') with
+      | Int a, Int b -> Int (a * b)
+      | _ -> Mul (e1', e2'))
+  | Div (e1, e2) -> 
+      let e1' = fold_constants e1 in
+      let e2' = fold_constants e2 in
+      (match (e1', e2') with
+      | Int a, Int b when b <> 0 -> Int (a / b)
+      | _ -> Div (e1', e2'))
+  | Let (var, e1, e2) ->
+      Let (var, fold_constants e1, fold_constants e2)
+  | e -> e
+  
 let program =
   string "let f" *> ws *> many (variable <* ws) >>= fun args_names ->
   ws *> char '=' *> ws *> expr >>= fun function_body ->

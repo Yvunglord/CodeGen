@@ -30,7 +30,8 @@ let generate_asm data =
   if List.length data.args_names <> List.length data.args then
     failwith "Number of arguments does not match";
   
-  let expression_asm = generate_expression_asm data.function_body in
+  let optimized_body = fold_constants data.function_body in
+  let expression_asm = generate_expression_asm optimized_body in
   let args_asm =
     List.map2
       (fun name value -> Printf.sprintf "%s: .word %d" name value)
