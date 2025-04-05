@@ -49,11 +49,22 @@ let test_cases = [
   ("test_reassociation",
   "let f a b = (a + b) - a\nlet main = print_int (f 5 3)",
   { args_names = ["a"; "b"]; function_body = Var "b"; args = [5; 3] });
+  ("test_strength_reduction_mul",
+  "let f a = a * 4\nlet main = print_int (f 5)",
+  { args_names = ["a"]; 
+    function_body = Shl (Var "a", 2); 
+    args = [5] });
+ ("test_strength_reduction_nested",
+  "let f x = (x * 8) * 2\nlet main = print_int (f 3)",
+  { args_names = ["x"]; 
+    function_body = Shl (Shl (Var "x", 3), 1); 
+    args = [3] });
 ]
 
 let rec count_nodes = function
   | Add(a,b) | Sub(a,b) | Mul(a,b) | Div(a,b) -> 1 + count_nodes a + count_nodes b
   | Let(_,a,b) -> 1 + count_nodes a + count_nodes b
+  | Shl(e, _) -> 1 + count_nodes e  
   | Int _ | Var _ -> 1
 
 let performance_test () =

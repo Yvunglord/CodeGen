@@ -14,6 +14,11 @@ let binop op =
 
 let generate_expression_asm (expression : expr) : string =
   let rec helper = function
+    | Shl (e, k) ->
+      helper e ^
+      "lw t0, 0(sp)\n" ^
+      Printf.sprintf "slli t0, t0, %d\n" k ^
+      "sw t0, 0(sp)\n"
     | Add (e1, e2) ->
         Printf.sprintf "%s%s%s" (helper e1) (helper e2) (binop "add")
     | Sub (e1, e2) ->

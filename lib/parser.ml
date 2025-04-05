@@ -6,6 +6,7 @@ type expr =
   | Int of int
   | Var of string
   | Let of string * expr * expr
+  | Shl of expr * int
 
 type program_data = {
   args_names : string list;
@@ -115,38 +116,54 @@ let rec expr_eq e1 e2 =
       v1 = v2 && expr_eq e1a e2a && expr_eq e1b e2b
   | _ -> false
 
-  let rec fold_constants = function
-    | Add (e1, e2) -> 
-      let e1' = fold_constants e1 in
-      let e2' = fold_constants e2 in
-      (match (e1', e2') with
-      | Int a, Int b -> Int (a + b)
-      | _, Sub(e3, e4) when expr_eq e4 e1' -> e3
-      | Sub(e3, e4), _ when expr_eq e4 e2' -> e3
-      | _ -> Add (e1', e2'))
-  | Sub (e1, e2) -> 
-      let e1' = fold_constants e1 in
-      let e2' = fold_constants e2 in
-      (match (e1', e2') with
-      | Int a, Int b -> Int (a - b)
-      | Add(a, b), e when expr_eq e a -> b
-      | Add(a, b), e when expr_eq e b -> a
-      | _ -> Sub (e1', e2'))
-  | Mul (e1, e2) -> 
-      let e1' = fold_constants e1 in
-      let e2' = fold_constants e2 in
-      (match (e1', e2') with
-      | Int a, Int b -> Int (a * b)
-      | _ -> Mul (e1', e2'))
-  | Div (e1, e2) -> 
-      let e1' = fold_constants e1 in
-      let e2' = fold_constants e2 in
-      (match (e1', e2') with
-      | Int a, Int b when b <> 0 -> Int (a / b)
-      | _ -> Div (e1', e2'))
-  | Let (var, e1, e2) ->
-      Let (var, fold_constants e1, fold_constants e2)
-  | e -> e
+let is_power_of_two n = n > 0 && (n land (n - 1)) = 0
+
+let log2 n = 
+  let rec aux acc = function
+    | 1 -> acc
+    | n -> aux (acc + 1) (n lsr 1)
+in
+aux 0 n
+
+let rec fold_constants = function
+  | Add (e1, e2) -> 
+    let e1' = fold_constants e1 in
+    let e2' = fold_constants e2 in
+    (match (e1', e2') with
+    | Int a, Int b -> Int (a + b)
+    | _, Sub(e3, e4) when expr_eq e4 e1' -> e3
+    | Sub(e3, e4), _ when expr_eq e4 e2' -> e3
+    | _ -> Add (e1', e2'))
+| Sub (e1, e2) -> 
+    let e1' = fold_constants e1 in
+    let e2' = fold_constants e2 in
+    (match (e1', e2') with
+    | Int a, Int b -> Int (a - b)
+    | Add(a, b), e when expr_eq e a -> b
+    | Add(a, b), e when expr_eq e b -> a
+    | _ -> Sub (e1', e2'))
+| Mul (e1, e2) ->
+    let e1' = fold_constants e1 in
+    let e2' = fold_constants e2 in
+    (match (e1', e2') with
+    | Int a, Int b -> Int (a * b)
+    | Int n, e when is_power_of_two n -> Shl (e, log2 n)
+    | e, Int n when is_power_of_two n -> Shl (e, log2 n)
+    | _ -> Mul (e1', e2'))
+| Div (e1, e2) -> 
+    let e1' = fold_constants e1 in
+    let e2' = fold_constants e2 in
+    (match (e1', e2') with
+    | Int a, Int b when b <> 0 -> Int (a / b)
+    | _ -> Div (e1', e2'))
+| Let (var, e1, e2) ->
+    Let (var, fold_constants e1, fold_constants e2)
+| Shl (e, k) ->
+    let e' = fold_constants e in
+    (match  e' with
+    | Int n -> Int (n lsl k)
+    | _ -> Shl (e', k))
+| e -> e
   
 let program =
   string "let f" *> ws *> many (variable <* ws) >>= fun args_names ->
