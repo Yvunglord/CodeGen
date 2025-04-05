@@ -46,6 +46,9 @@ let test_cases = [
   ("test_nested_fold",
    "let f = (2 + 3) * (4 - 1) \nlet main = print_int (f)",
    { args_names = []; function_body = Int 15; args = [] });
+  ("test_reassociation",
+  "let f a b = (a + b) - a\nlet main = print_int (f 5 3)",
+  { args_names = ["a"; "b"]; function_body = Var "b"; args = [5; 3] });
 ]
 
 let rec count_nodes = function

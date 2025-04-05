@@ -103,18 +103,34 @@ and factor input =
        Let (var, e1, e2)))
     input
 
+let rec expr_eq e1 e2 =
+  match e1, e2 with
+  | Int n1, Int n2 -> n1 = n2
+  | Var v1, Var v2 -> v1 = v2
+  | Add(a1, b1), Add(a2, b2) -> expr_eq a1 a2 && expr_eq b1 b2
+  | Sub(a1, b1), Sub(a2, b2) -> expr_eq a1 a2 && expr_eq b1 b2
+  | Mul(a1, b1), Mul(a2, b2) -> expr_eq a1 a2 && expr_eq b1 b2
+  | Div(a1, b1), Div(a2, b2) -> expr_eq a1 a2 && expr_eq b1 b2
+  | Let(v1, e1a, e1b), Let(v2, e2a, e2b) ->
+      v1 = v2 && expr_eq e1a e2a && expr_eq e1b e2b
+  | _ -> false
+
   let rec fold_constants = function
-  | Add (e1, e2) -> 
+    | Add (e1, e2) -> 
       let e1' = fold_constants e1 in
       let e2' = fold_constants e2 in
       (match (e1', e2') with
       | Int a, Int b -> Int (a + b)
+      | _, Sub(e3, e4) when expr_eq e4 e1' -> e3
+      | Sub(e3, e4), _ when expr_eq e4 e2' -> e3
       | _ -> Add (e1', e2'))
   | Sub (e1, e2) -> 
       let e1' = fold_constants e1 in
       let e2' = fold_constants e2 in
       (match (e1', e2') with
       | Int a, Int b -> Int (a - b)
+      | Add(a, b), e when expr_eq e a -> b
+      | Add(a, b), e when expr_eq e b -> a
       | _ -> Sub (e1', e2'))
   | Mul (e1, e2) -> 
       let e1' = fold_constants e1 in
